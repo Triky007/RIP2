@@ -1,0 +1,57 @@
+import os
+import tempfile
+from PIL import Image
+from utils.ghostscript import rasterize_pdf
+from utils.dithering import floyd_steinberg_dither
+
+def process_pdf_to_rip(pdf_path: str, output_format: str, dpi: int = 300):
+    """
+    Orchestrates the conversion from PDF to screened image.
+    output_format: 'tiff1b', 'bmp2b', 'bmp4b', 'bmp8b'
+    """
+    # 1. Rasterize to grayscale intermediate
+    gray_tif = rasterize_pdf(pdf_path, dpi)
+    
+    try:
+        # 2. Open with PIL
+        img = Image.open(gray_tif)
+        
+        # 3. Apply dithering based on format
+        if output_format == 'tiff1b':
+            result = floyd_steinberg_dither(img, 1)
+            ext = ".tif"
+            save_params = {"compression": "packbits"} # or tiff_ccitt if preferred for 1b
+        elif output_format == 'bmp2b':
+            result = floyd_steinberg_dither(img, 2)
+            ext = ".bmp"
+            save_params = {}
+        elif output_format == 'bmp4b':
+            result = floyd_steinberg_dither(img, 4)
+            ext = ".bmp"
+            save_params = {}
+        elif output_format == 'bmp8b':
+            result = floyd_steinberg_dither(img, 8)
+            ext = ".bmp"
+            save_params = {}
+        else:
+            raise ValueError(f"Unsupported format: {output_format}")
+            
+        # 4. Save to final output
+        fd, final_path = tempfile.mkstemp(suffix=ext)
+        os.close(fd)
+        
+        result.save(final_path, **save_params)
+        
+        # Also create a PNG preview for the web
+        fd_p, preview_path = tempfile.mkstemp(suffix=".png")
+        os.close(fd_p)
+        
+        # Convert to RGB for preview if needed, or just save as is
+        result.convert("RGB").save(preview_path)
+        
+        return final_path, preview_path
+        
+    finally:
+        # Cleanup intermediate
+        if os.path.exists(gray_tif):
+            os.remove(gray_tif)
