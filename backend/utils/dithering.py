@@ -1,14 +1,22 @@
 import numpy as np
 from PIL import Image
 
-def floyd_steinberg_dither(image: Image.Image, bit_depth: int):
+def floyd_steinberg_dither(image: Image.Image, bit_depth: int, noise_intensity: float = 0.0):
     """
     Apply Floyd-Steinberg dithering to a grayscale image.
     bit_depth: 1, 2, 4, or 8
+    noise_intensity: 0.0 to 1.0 (factor to add random noise to break patterns)
     """
     # Ensure grayscale
     img = image.convert('L')
     pixels = np.array(img, dtype=float)
+    
+    # Add noise to break patterns (worming)
+    if noise_intensity > 0:
+        # Scale intensity to pixel range (e.g. 0.1 -> +/- 12.75)
+        noise = (np.random.random(pixels.shape) - 0.5) * 2 * (noise_intensity * 255 * 0.2) 
+        pixels = pixels + noise
+        pixels = np.clip(pixels, 0, 255)
     
     height, width = pixels.shape
     

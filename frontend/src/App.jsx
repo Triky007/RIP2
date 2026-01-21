@@ -24,6 +24,7 @@ function App() {
     const [file, setFile] = useState(null);
     const [format, setFormat] = useState('tiff1b');
     const [dpi, setDpi] = useState(300);
+    const [noise, setNoise] = useState(0);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
@@ -50,6 +51,7 @@ function App() {
         formData.append('file', file);
         formData.append('format', format);
         formData.append('dpi', dpi);
+        formData.append('noise', noise / 100); // 0-100 to 0.0-1.0
 
         try {
             const response = await axios.post('/api/process', formData);
@@ -96,8 +98,8 @@ function App() {
                                         key={f.id}
                                         onClick={() => setFormat(f.id)}
                                         className={`flex flex-col items-start p-4 rounded-2xl border transition-all duration-200 text-left ${format === f.id
-                                                ? 'bg-primary-500/10 border-primary-500/50 ring-1 ring-primary-500/50'
-                                                : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
+                                            ? 'bg-primary-500/10 border-primary-500/50 ring-1 ring-primary-500/50'
+                                            : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
                                             }`}
                                     >
                                         <span className={`font-semibold ${format === f.id ? 'text-primary-300' : 'text-slate-200'}`}>
@@ -113,30 +115,62 @@ function App() {
                         <div>
                             <div className="flex justify-between items-center mb-4">
                                 <label className="text-sm font-medium text-slate-400">Resolution (DPI)</label>
-                                <span className="text-primary-400 font-mono font-bold font-lg">{dpi}</span>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setDpi(300)}
+                                        className={`text-xs px-2 py-1 rounded ${dpi === 300 ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'}`}
+                                    >300</button>
+                                    <button
+                                        onClick={() => setDpi(600)}
+                                        className={`text-xs px-2 py-1 rounded ${dpi === 600 ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'}`}
+                                    >600</button>
+                                    <button
+                                        onClick={() => setDpi("1200x600")}
+                                        className={`text-xs px-2 py-1 rounded ${dpi === "1200x600" ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'}`}
+                                    >1200x600</button>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center bg-slate-800 rounded-lg border border-slate-700 focus-within:border-primary-500 transition-colors">
+                                <input
+                                    type="text"
+                                    value={dpi}
+                                    onChange={(e) => setDpi(e.target.value)}
+                                    className="w-full bg-transparent px-4 py-2 text-slate-200 outline-none font-mono placeholder-slate-600"
+                                    placeholder="e.g. 300 or 1200x600"
+                                />
+                            </div>
+                            <p className="text-xs text-slate-500 mt-2">
+                                Format: <span className="font-mono text-slate-400">Value</span> (symmetric) or <span className="font-mono text-slate-400">XxY</span> (asymmetric)
+                            </p>
+                        </div>
+
+                        {/* Noise Settings */}
+                        <div>
+                            <div className="flex justify-between items-center mb-4">
+                                <label className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                                    Noise Injection
+                                    <span className="text-xs font-normal text-slate-600 bg-slate-800 px-2 py-0.5 rounded-full">Reduces Patterns</span>
+                                </label>
+                                <span className="text-indigo-400 font-mono font-bold font-lg">{noise}%</span>
                             </div>
                             <input
                                 type="range"
-                                min="72"
-                                max="1200"
+                                min="0"
+                                max="50"
                                 step="1"
-                                value={dpi}
-                                onChange={(e) => setDpi(parseInt(e.target.value))}
-                                className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                                value={noise}
+                                onChange={(e) => setNoise(parseInt(e.target.value))}
+                                className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400 transition-all"
                             />
-                            <div className="flex justify-between text-[10px] text-slate-600 mt-2 uppercase tracking-widest font-bold">
-                                <span>Web (72)</span>
-                                <span>Print (300)</span>
-                                <span>Pro (1200)</span>
-                            </div>
                         </div>
 
                         {/* Upload Area */}
                         <div
                             {...getRootProps()}
                             className={`relative border-2 border-dashed rounded-3xl p-10 transition-all duration-300 flex flex-col items-center justify-center cursor-pointer ${isDragActive
-                                    ? 'border-primary-500 bg-primary-500/5 scale-[0.98]'
-                                    : 'border-slate-700 hover:border-slate-500 bg-slate-800/30'
+                                ? 'border-primary-500 bg-primary-500/5 scale-[0.98]'
+                                : 'border-slate-700 hover:border-slate-500 bg-slate-800/30'
                                 }`}
                         >
                             <input {...getInputProps()} />
@@ -162,8 +196,8 @@ function App() {
                             onClick={handleProcess}
                             disabled={!file || loading}
                             className={`w-full py-4 rounded-2xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-xl ${!file || loading
-                                    ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                                    : 'bg-primary-500 hover:bg-primary-600 text-white hover:scale-[1.02] active:scale-[0.98]'
+                                ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                                : 'bg-primary-500 hover:bg-primary-600 text-white hover:scale-[1.02] active:scale-[0.98]'
                                 }`}
                         >
                             {loading ? (

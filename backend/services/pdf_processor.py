@@ -4,13 +4,23 @@ from PIL import Image
 from utils.ghostscript import rasterize_pdf
 from utils.dithering import floyd_steinberg_dither
 
-def process_pdf_to_rip(pdf_path: str, output_format: str, dpi: int = 300):
+def process_pdf_to_rip(pdf_path: str, output_format: str, dpi: int | str = 300, noise_level: float = 0.0):
     """
     Orchestrates the conversion from PDF to screened image.
     output_format: 'tiff1b', 'bmp2b', 'bmp4b', 'bmp8b'
+    noise_level: 0.0 to 1.0
+    dpi: int or str (e.g., "1200x600")
     """
+    
+    # Parse DPI
+    if isinstance(dpi, str) and 'x' in dpi.lower():
+        parts = dpi.lower().split('x')
+        parsed_dpi = (int(parts[0]), int(parts[1]))
+    else:
+        parsed_dpi = int(dpi)
+
     # 1. Rasterize to grayscale intermediate
-    gray_tif = rasterize_pdf(pdf_path, dpi)
+    gray_tif = rasterize_pdf(pdf_path, parsed_dpi)
     
     try:
         # 2. Open with PIL
@@ -18,19 +28,19 @@ def process_pdf_to_rip(pdf_path: str, output_format: str, dpi: int = 300):
         
         # 3. Apply dithering based on format
         if output_format == 'tiff1b':
-            result = floyd_steinberg_dither(img, 1)
+            result = floyd_steinberg_dither(img, 1, noise_level)
             ext = ".tif"
             save_params = {"compression": "packbits"} # or tiff_ccitt if preferred for 1b
         elif output_format == 'bmp2b':
-            result = floyd_steinberg_dither(img, 2)
+            result = floyd_steinberg_dither(img, 2, noise_level)
             ext = ".bmp"
             save_params = {}
         elif output_format == 'bmp4b':
-            result = floyd_steinberg_dither(img, 4)
+            result = floyd_steinberg_dither(img, 4, noise_level)
             ext = ".bmp"
             save_params = {}
         elif output_format == 'bmp8b':
-            result = floyd_steinberg_dither(img, 8)
+            result = floyd_steinberg_dither(img, 8, noise_level)
             ext = ".bmp"
             save_params = {}
         else:
