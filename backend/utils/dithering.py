@@ -10,11 +10,19 @@ def floyd_steinberg_dither(image: Image.Image, bit_depth: int, noise_intensity: 
     img = image.convert('L')
     
     # 2. Add noise if requested (Vectorized with NumPy, so it's fast)
+    # IMPORTANT: Don't add noise to pure whites or pure blacks to avoid stray dots
     if noise_intensity > 0:
         pixels = np.array(img, dtype=float)
         # Scale intensity: 0.1 -> +/- ~25 units of gray
         noise = (np.random.random(pixels.shape) - 0.5) * 2 * (noise_intensity * 255 * 0.5)
-        pixels = np.clip(pixels + noise, 0, 255).astype(np.uint8)
+        
+        # Create a mask for extreme values (near white or near black)
+        # Don't apply noise to very light (>250) or very dark (<5) areas
+        safe_zone = (pixels > 5) & (pixels < 250)
+        
+        # Only apply noise where it's safe
+        pixels = np.where(safe_zone, pixels + noise, pixels)
+        pixels = np.clip(pixels, 0, 255).astype(np.uint8)
         img = Image.fromarray(pixels)
 
     # 3. Apply Floyd-Steinberg Dithering
