@@ -4,64 +4,34 @@ from PIL import Image
 def floyd_steinberg_dither(image: Image.Image, bit_depth: int, noise_intensity: float = 0.0):
     """
     Apply Floyd-Steinberg dithering to a grayscale image.
-    bit_depth: 1, 2, 4, or 8
-    noise_intensity: 0.0 to 1.0 (factor to add random noise to break patterns)
+    Optimized version using Pillow's native C implementation.
     """
-    # Ensure grayscale
+    # 1. Ensure we start with a high-quality grayscale image
     img = image.convert('L')
-    pixels = np.array(img, dtype=float)
     
-    # Add noise to break patterns (worming)
+    # 2. Add noise if requested (Vectorized with NumPy, so it's fast)
     if noise_intensity > 0:
-        # Scale intensity to pixel range (e.g. 0.1 -> +/- 12.75)
-        noise = (np.random.random(pixels.shape) - 0.5) * 2 * (noise_intensity * 255 * 0.2) 
-        pixels = pixels + noise
-        pixels = np.clip(pixels, 0, 255)
-    
-    height, width = pixels.shape
-    
-    # Calculate levels
-    # 1-bit: 2 levels (0, 255)
-    # 2-bit: 4 levels (0, 85, 170, 255)
-    # 4-bit: 16 levels (0, 17, ..., 255)
-    # 8-bit: 256 levels (0, 1, ..., 255)
-    
-    num_levels = 2**bit_depth
-    if num_levels > 256:
-        num_levels = 256
-        
-    levels = np.linspace(0, 255, num_levels)
-    
-    def find_closest_level(pixel_value):
-        idx = np.abs(levels - pixel_value).argmin()
-        return levels[idx]
+        pixels = np.array(img, dtype=float)
+        # Scale intensity: 0.1 -> +/- ~25 units of gray
+        noise = (np.random.random(pixels.shape) - 0.5) * 2 * (noise_intensity * 255 * 0.5)
+        pixels = np.clip(pixels + noise, 0, 255).astype(np.uint8)
+        img = Image.fromarray(pixels)
 
-    for y in range(height):
-        for x in range(width):
-            old_val = pixels[y, x]
-            new_val = find_closest_level(old_val)
-            pixels[y, x] = new_val
-            err = old_val - new_val
-            
-            if x + 1 < width:
-                pixels[y, x + 1] += err * 7 / 16
-            if y + 1 < height:
-                if x > 0:
-                    pixels[y + 1, x - 1] += err * 3 / 16
-                pixels[y + 1, x] += err * 5 / 16
-                if x + 1 < width:
-                    pixels[y + 1, x + 1] += err * 1 / 16
-                    
-    # Clip and convert back to uint8
-    pixels = np.clip(pixels, 0, 255).astype(np.uint8)
-    result_img = Image.fromarray(pixels, mode='L')
+    # 3. Apply Floyd-Steinberg Dithering using PIL's optimized C core
+    # This is 100x faster than a Python for-loop
+    num_colors = 2**bit_depth
     
     if bit_depth == 1:
-        return result_img.convert('1')
-    elif bit_depth == 2:
-        # PIL doesn't have a native 2-bit mode, we save as 8-bit with limited palette or just P mode
-        return result_img.convert('P', palette=Image.ADAPTIVE, colors=4)
-    elif bit_depth == 4:
-        return result_img.convert('P', palette=Image.ADAPTIVE, colors=16)
+        # Native 1-bit dithering
+        return img.convert('1', dither=Image.FLOYDSTEINBERG)
+    
+    elif bit_depth <= 4:
+        # For 2-bit and 4-bit, we use a Quantized Palette mode
+        # Image.FLOYDSTEINBERG constant is used for the dither argument
+        return img.convert('P', palette=Image.ADAPTIVE, colors=num_colors, dither=Image.FLOYDSTEINBERG)
+    
     else:
-        return result_img
+        # For 8-bit, if the user wants it "tramado" but in 8-bit, 
+        # we can quantize to 256 levels (which is almost nothing) 
+        # or just return the noisy L image if no reduction is needed.
+        return img.convert('L')

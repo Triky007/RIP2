@@ -23,7 +23,9 @@ async def process_pdf(
     file: UploadFile = File(...),
     format: str = Form(...),
     dpi: str = Form("300"), # Accepts string now (e.g. "1200x600")
-    noise: float = Form(0.0)
+    noise: float = Form(0.0),
+    threads: int = Form(8),
+    memory: int = Form(2000)
 ):
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
@@ -38,7 +40,7 @@ async def process_pdf(
             
         # Process
         try:
-            final_path, preview_path = process_pdf_to_rip(temp_pdf, format, dpi, noise)
+            final_path, preview_path = process_pdf_to_rip(temp_pdf, format, dpi, noise, threads, memory)
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
             

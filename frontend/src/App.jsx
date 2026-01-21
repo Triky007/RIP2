@@ -25,6 +25,8 @@ function App() {
     const [format, setFormat] = useState('tiff1b');
     const [dpi, setDpi] = useState(300);
     const [noise, setNoise] = useState(0);
+    const [threads, setThreads] = useState(8);
+    const [memory, setMemory] = useState(2000);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
@@ -51,7 +53,9 @@ function App() {
         formData.append('file', file);
         formData.append('format', format);
         formData.append('dpi', dpi);
-        formData.append('noise', noise / 100); // 0-100 to 0.0-1.0
+        formData.append('noise', noise / 100);
+        formData.append('threads', threads);
+        formData.append('memory', memory);
 
         try {
             const response = await axios.post('/api/process', formData);
@@ -163,6 +167,39 @@ function App() {
                                 onChange={(e) => setNoise(parseInt(e.target.value))}
                                 className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400 transition-all"
                             />
+                        </div>
+
+                        {/* Hardware Acceleration (New Section) */}
+                        <div className="pt-4 border-t border-slate-800">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Settings className="w-4 h-4 text-slate-500" />
+                                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Hardware Acceleration</h3>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-2">CPU Threads</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="64"
+                                        value={threads}
+                                        onChange={(e) => setThreads(parseInt(e.target.value))}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-slate-200 text-sm focus:border-indigo-500 outline-none transition-colors"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-2">Memory (MB)</label>
+                                    <input
+                                        type="number"
+                                        min="256"
+                                        step="256"
+                                        value={memory}
+                                        onChange={(e) => setMemory(parseInt(e.target.value))}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-slate-200 text-sm focus:border-indigo-500 outline-none transition-colors"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         {/* Upload Area */}

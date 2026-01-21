@@ -4,12 +4,17 @@ from PIL import Image
 from utils.ghostscript import rasterize_pdf
 from utils.dithering import floyd_steinberg_dither
 
-def process_pdf_to_rip(pdf_path: str, output_format: str, dpi: int | str = 300, noise_level: float = 0.0):
+# Disable PIL's DecompressionBomb warning as we expect large images for RIP2
+Image.MAX_IMAGE_PIXELS = None
+
+def process_pdf_to_rip(pdf_path: str, output_format: str, dpi: int | str = 300, noise_level: float = 0.0, threads: int = 8, memory_mb: int = 2000):
     """
     Orchestrates the conversion from PDF to screened image.
     output_format: 'tiff1b', 'bmp2b', 'bmp4b', 'bmp8b'
     noise_level: 0.0 to 1.0
     dpi: int or str (e.g., "1200x600")
+    threads: int
+    memory_mb: int
     """
     
     # Parse DPI
@@ -20,7 +25,7 @@ def process_pdf_to_rip(pdf_path: str, output_format: str, dpi: int | str = 300, 
         parsed_dpi = int(dpi)
 
     # 1. Rasterize to grayscale intermediate
-    gray_tif = rasterize_pdf(pdf_path, parsed_dpi)
+    gray_tif = rasterize_pdf(pdf_path, parsed_dpi, threads=threads, memory_mb=memory_mb)
     
     try:
         # 2. Open with PIL
