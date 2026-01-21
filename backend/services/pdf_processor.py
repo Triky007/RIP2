@@ -7,10 +7,11 @@ from utils.dithering import floyd_steinberg_dither
 # Disable PIL's DecompressionBomb warning as we expect large images for RIP2
 Image.MAX_IMAGE_PIXELS = None
 
-def process_pdf_to_rip(pdf_path: str, output_format: str, dpi: int | str = 300, noise_level: float = 0.0, threads: int = 8, memory_mb: int = 2000):
+def process_pdf_to_rip(pdf_path: str, bit_depth: int, file_type: str, dpi: int | str = 300, noise_level: float = 0.0, threads: int = 8, memory_mb: int = 2000):
     """
     Orchestrates the conversion from PDF to screened image.
-    output_format: 'tiff1b', 'bmp2b', 'bmp4b', 'bmp8b'
+    bit_depth: 1, 2, 4, 8
+    file_type: 'tiff', 'bmp'
     noise_level: 0.0 to 1.0
     dpi: int or str (e.g., "1200x600")
     threads: int
@@ -31,27 +32,22 @@ def process_pdf_to_rip(pdf_path: str, output_format: str, dpi: int | str = 300, 
         # 2. Open with PIL
         img = Image.open(gray_tif)
         
-        # 3. Apply dithering based on format
-        if output_format == 'tiff1b':
-            result = floyd_steinberg_dither(img, 1, noise_level)
+        # 3. Apply dithering
+        result = floyd_steinberg_dither(img, bit_depth, noise_level)
+        
+        # 4. Set container and compression
+        if file_type.lower() == 'tiff':
             ext = ".tif"
-            save_params = {"compression": "packbits"} # or tiff_ccitt if preferred for 1b
-        elif output_format == 'bmp2b':
-            result = floyd_steinberg_dither(img, 2, noise_level)
+            # Optimization for 1-bit TIFF
+            if bit_depth == 1:
+                save_params = {"compression": "group4"} # Standard for B/W Fax/RIP
+            else:
+                save_params = {"compression": "packbits"}
+        else: # BMP
             ext = ".bmp"
             save_params = {}
-        elif output_format == 'bmp4b':
-            result = floyd_steinberg_dither(img, 4, noise_level)
-            ext = ".bmp"
-            save_params = {}
-        elif output_format == 'bmp8b':
-            result = floyd_steinberg_dither(img, 8, noise_level)
-            ext = ".bmp"
-            save_params = {}
-        else:
-            raise ValueError(f"Unsupported format: {output_format}")
             
-        # 4. Save to final output
+        # 5. Save to final output
         fd, final_path = tempfile.mkstemp(suffix=ext)
         os.close(fd)
         
@@ -61,7 +57,7 @@ def process_pdf_to_rip(pdf_path: str, output_format: str, dpi: int | str = 300, 
         fd_p, preview_path = tempfile.mkstemp(suffix=".png")
         os.close(fd_p)
         
-        # Convert to RGB for preview if needed, or just save as is
+        # Convert to RGB for preview if needed
         result.convert("RGB").save(preview_path)
         
         return final_path, preview_path

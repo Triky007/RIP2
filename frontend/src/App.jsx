@@ -13,16 +13,22 @@ import {
     Eye
 } from 'lucide-react';
 
-const FORMATS = [
-    { id: 'tiff1b', name: 'TIFF 1-bit', description: 'Binary Monochrome' },
-    { id: 'bmp2b', name: 'BMP 2-bit', description: '4 Colors Palette' },
-    { id: 'bmp4b', name: 'BMP 4-bit', description: '16 Colors Palette' },
-    { id: 'bmp8b', name: 'BMP 8-bit', description: '256 Colors Grayscale' },
+const DEPTHS = [
+    { id: 1, name: '1-bit', description: 'Monochrome' },
+    { id: 2, name: '2-bit', description: '4 Colors' },
+    { id: 4, name: '4-bit', description: '16 Colors' },
+    { id: 8, name: '8-bit', description: '256 Colors' },
+];
+
+const CONTAINERS = [
+    { id: 'tiff', name: 'TIFF', description: 'Recommended for RIP' },
+    { id: 'bmp', name: 'BMP', description: 'Standard Bitmap' },
 ];
 
 function App() {
     const [file, setFile] = useState(null);
-    const [format, setFormat] = useState('tiff1b');
+    const [bitDepth, setBitDepth] = useState(1);
+    const [container, setContainer] = useState('tiff');
     const [dpi, setDpi] = useState(300);
     const [noise, setNoise] = useState(0);
     const [threads, setThreads] = useState(8);
@@ -51,7 +57,8 @@ function App() {
 
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('format', format);
+        formData.append('bit_depth', bitDepth);
+        formData.append('container', container);
         formData.append('dpi', dpi);
         formData.append('noise', noise / 100);
         formData.append('threads', threads);
@@ -93,23 +100,44 @@ function App() {
                     </div>
 
                     <div className="space-y-8">
-                        {/* Format Selection */}
+                        {/* Bit Depth Selection */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-4">Output Format</label>
-                            <div className="grid grid-cols-2 gap-4">
-                                {FORMATS.map((f) => (
+                            <label className="block text-sm font-medium text-slate-400 mb-4">Bit Depth</label>
+                            <div className="grid grid-cols-4 gap-2">
+                                {DEPTHS.map((d) => (
                                     <button
-                                        key={f.id}
-                                        onClick={() => setFormat(f.id)}
-                                        className={`flex flex-col items-start p-4 rounded-2xl border transition-all duration-200 text-left ${format === f.id
+                                        key={d.id}
+                                        onClick={() => setBitDepth(d.id)}
+                                        className={`flex flex-col items-center p-3 rounded-xl border transition-all duration-200 text-center ${bitDepth === d.id
                                             ? 'bg-primary-500/10 border-primary-500/50 ring-1 ring-primary-500/50'
                                             : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
                                             }`}
                                     >
-                                        <span className={`font-semibold ${format === f.id ? 'text-primary-300' : 'text-slate-200'}`}>
-                                            {f.name}
+                                        <span className={`font-semibold text-sm ${bitDepth === d.id ? 'text-primary-300' : 'text-slate-200'}`}>
+                                            {d.name}
                                         </span>
-                                        <span className="text-xs text-slate-500 mt-1">{f.description}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Container Selection */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-4">Output Format (Container)</label>
+                            <div className="grid grid-cols-2 gap-4">
+                                {CONTAINERS.map((c) => (
+                                    <button
+                                        key={c.id}
+                                        onClick={() => setContainer(c.id)}
+                                        className={`flex flex-col items-start p-4 rounded-2xl border transition-all duration-200 text-left ${container === c.id
+                                            ? 'bg-indigo-500/10 border-indigo-500/50 ring-1 ring-indigo-500/50'
+                                            : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
+                                            }`}
+                                    >
+                                        <span className={`font-semibold ${container === c.id ? 'text-indigo-300' : 'text-slate-200'}`}>
+                                            {c.name}
+                                        </span>
+                                        <span className="text-xs text-slate-500 mt-1">{c.description}</span>
                                     </button>
                                 ))}
                             </div>
@@ -132,6 +160,14 @@ function App() {
                                         onClick={() => setDpi("1200x600")}
                                         className={`text-xs px-2 py-1 rounded ${dpi === "1200x600" ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'}`}
                                     >1200x600</button>
+                                    <button
+                                        onClick={() => setDpi("1200x840")}
+                                        className={`text-xs px-2 py-1 rounded ${dpi === "1200x840" ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'}`}
+                                    >1200x840</button>
+                                    <button
+                                        onClick={() => setDpi("1200x1200")}
+                                        className={`text-xs px-2 py-1 rounded ${dpi === "1200x1200" ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'}`}
+                                    >1200x1200</button>
                                 </div>
                             </div>
 
@@ -298,7 +334,7 @@ function App() {
 
                                 <div className="mt-4 flex items-center justify-center gap-6 text-xs text-slate-500 font-mono bg-slate-800/30 p-2 rounded-lg">
                                     <span className="flex items-center gap-1"><FileText className="w-3 h-3" /> {result.filename}</span>
-                                    <span className="flex items-center gap-1 uppercase font-bold text-indigo-400">{format}</span>
+                                    <span className="flex items-center gap-1 uppercase font-bold text-indigo-400">{bitDepth}-BIT {container}</span>
                                     <span className="flex items-center gap-1 font-bold">{dpi} DPI</span>
                                 </div>
                             </div>

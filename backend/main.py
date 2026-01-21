@@ -21,8 +21,9 @@ PROCESSED_DATA = {}
 @app.post("/process")
 async def process_pdf(
     file: UploadFile = File(...),
-    format: str = Form(...),
-    dpi: str = Form("300"), # Accepts string now (e.g. "1200x600")
+    bit_depth: int = Form(...),
+    container: str = Form(...),
+    dpi: str = Form("300"),
     noise: float = Form(0.0),
     threads: int = Form(8),
     memory: int = Form(2000)
@@ -40,7 +41,7 @@ async def process_pdf(
             
         # Process
         try:
-            final_path, preview_path = process_pdf_to_rip(temp_pdf, format, dpi, noise, threads, memory)
+            final_path, preview_path = process_pdf_to_rip(temp_pdf, bit_depth, container, dpi, noise, threads, memory)
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
             
