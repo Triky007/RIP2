@@ -54,11 +54,20 @@ def process_pdf_to_rip(pdf_path: str, bit_depth: int, file_type: str, dpi: int |
         result.save(final_path, **save_params)
         
         # Also create a PNG preview for the web
+        # CRITICAL: Resize for web viewing. 1200DPI is too big for browser canvas (black screen issue)
         fd_p, preview_path = tempfile.mkstemp(suffix=".png")
         os.close(fd_p)
         
-        # Convert to RGB for preview if needed
-        result.convert("RGB").save(preview_path)
+        # Create a copy for preview and resize it
+        preview_img = result.copy()
+        
+        # Max dimension for preview (e.g. 2048px)
+        MAX_PREVIEW_SIZE = 2048
+        if preview_img.width > MAX_PREVIEW_SIZE or preview_img.height > MAX_PREVIEW_SIZE:
+             preview_img.thumbnail((MAX_PREVIEW_SIZE, MAX_PREVIEW_SIZE), Image.Resampling.NEAREST)
+        
+        # Convert to RGB for consistency
+        preview_img.convert("RGB").save(preview_path)
         
         return final_path, preview_path
         
