@@ -17,21 +17,35 @@ def floyd_steinberg_dither(image: Image.Image, bit_depth: int, noise_intensity: 
         pixels = np.clip(pixels + noise, 0, 255).astype(np.uint8)
         img = Image.fromarray(pixels)
 
-    # 3. Apply Floyd-Steinberg Dithering using PIL's optimized C core
-    # This is 100x faster than a Python for-loop
+    # 3. Apply Floyd-Steinberg Dithering
     num_colors = 2**bit_depth
+    if num_colors > 256:
+        num_colors = 256
     
     if bit_depth == 1:
-        # Native 1-bit dithering
+        # Native 1-bit dithering (best performance)
         return img.convert('1', dither=Image.FLOYDSTEINBERG)
     
-    elif bit_depth <= 4:
-        # For 2-bit and 4-bit, we use a Quantized Palette mode
-        # Image.FLOYDSTEINBERG constant is used for the dither argument
-        return img.convert('P', palette=Image.ADAPTIVE, colors=num_colors, dither=Image.FLOYDSTEINBERG)
+    # For 2, 4, 8-bit: Create a grayscale palette and use quantize()
+    # This forces PIL to apply error diffusion to the limited levels
     
-    else:
-        # For 8-bit, if the user wants it "tramado" but in 8-bit, 
-        # we can quantize to 256 levels (which is almost nothing) 
-        # or just return the noisy L image if no reduction is needed.
-        return img.convert('L')
+    # Create grayscale palette: e.g. for 4 colors: [0, 85, 170, 255]
+    palette_data = []
+    for i in range(num_colors):
+        gray_val = int(i * 255 / (num_colors - 1)) if num_colors > 1 else 0
+        palette_data.extend([gray_val, gray_val, gray_val])  # R=G=B for grayscale
+    
+    # Pad palette to 256 colors (768 bytes = 256 * 3)
+    palette_data.extend([0] * (768 - len(palette_data)))
+    
+    # Create a tiny palette image to use as reference
+    pal_img = Image.new('P', (1, 1))
+    pal_img.putpalette(palette_data)
+    
+    # Convert L to RGB first (quantize needs RGB or L, but palette ref needs RGB-ish behavior)
+    rgb_img = img.convert('RGB')
+    
+    # Quantize with dither=1 (Floyd-Steinberg)
+    dithered = rgb_img.quantize(palette=pal_img, dither=1)
+    
+    return dithered
